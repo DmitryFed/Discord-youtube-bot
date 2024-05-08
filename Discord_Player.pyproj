@@ -36,7 +36,6 @@
     </Interpreter>
   </ItemGroup>
   <ItemGroup>
-    <InterpreterReference Include="Global|PythonCore|3.10" />
     <InterpreterReference Include="Global|PythonCore|3.12" />
     <InterpreterReference Include="Global|PythonCore|3.7" />
   </ItemGroup>
