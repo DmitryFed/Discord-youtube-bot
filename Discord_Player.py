@@ -9,23 +9,11 @@ import nacl
 import asyncio
 import json
 from collections import defaultdict
+from discord import ui
 from youtube_search import YoutubeSearch
+from discord_ui import Components
 
-#class DiscordMusicBot:
-#    voice_clients = {}
-#    songs_queues ={list}
-
-#    async def connect_to_channel(self,ctx):
-#        if not self.voice_clients[ctx.guild.id].is_connected():
-#            voice_client = await ctx.author.voice.channel.connect()
-#            self.voice_clients[ctx.guild.id] = voice_client
-        
-
-#   async def getSongInfo(loop,link):
-#        data = await loop.run_in_executor(None,lambda: ytdl.extract_info(link, download=False))
-#        song = Song(url = data['url'],title = data['fulltitle'])
-
-   
+ 
 def run_bot():
     TOKEN = "" 
     #load_dotenv()
@@ -44,9 +32,6 @@ def run_bot():
     async def on_ready():
         print(f'{client.user} is now jamming')
     
-
-
-
     #play next song
     async def play_next(ctx):
        try:
@@ -57,14 +42,7 @@ def run_bot():
                 await play(ctx, link)
        except Exception as e:
             print(e)
-
-    async def search_by_title(ctx,title):
-  
-        results = YoutubeSearch(title,max_results = 10).to_dict()
-
-        for result in results:
-            await ctx.send("https://www.youtube.com" + result['url_suffix'])
-    
+            
     #main command:play
     @client.command(name="play")
     async def play(ctx, link):
@@ -166,6 +144,14 @@ def run_bot():
         if ctx.guild.id in queues:
           for u in queues[ctx.guild.id][0]:
              await ctx.send(u)
+
+     async def search_by_title(ctx,title):
+        results = YoutubeSearch(title,max_results = 10).to_dict()
+        embed = new EmbedBuilder()
+        for result in results:
+
+            (title = result['title'], url = "https://www.youtube.com" + result['url_suffix'])
+        ctx.send
 
     client.run(TOKEN)
 #global vars
