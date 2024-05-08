@@ -1,6 +1,6 @@
 from discord.ext import commands
 from discord import voice_client
-#rom dotenv import load_dotenv
+from dotenv import load_dotenv
 import os
 import typing
 import discord 
@@ -45,6 +45,8 @@ def run_bot():
         print(f'{client.user} is now jamming')
     
 
+
+
     #play next song
     async def play_next(ctx):
        try:
@@ -55,6 +57,13 @@ def run_bot():
                 await play(ctx, link)
        except Exception as e:
             print(e)
+
+    async def search_by_title(ctx,title):
+  
+        results = YoutubeSearch(title,max_results = 10).to_dict()
+
+        for result in results:
+            await ctx.send("https://www.youtube.com" + result['url_suffix'])
     
     #main command:play
     @client.command(name="play")
