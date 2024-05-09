@@ -11,10 +11,11 @@ import json
 from collections import defaultdict
 from discord import ui
 from youtube_search import YoutubeSearch
-from discord_ui import Components
-
+#from discord_ui import Components
+import validators
  
 def run_bot():
+   
     TOKEN = "" 
     #load_dotenv()
     #TOKEN = os.getenv('discord_token')
@@ -54,6 +55,12 @@ def run_bot():
             print(e)
         
         try:
+    
+            if link.find("http") == -1:
+                result = YoutubeSearch(ctx.message.content,max_results = 20).to_dict()
+                link = "https://www.youtube.com" + result[0]['url_suffix']
+            
+
             loop = asyncio.get_event_loop()
             data = await loop.run_in_executor(None,lambda: ytdl.extract_info(link, download=False))
             song = data['url']
@@ -145,15 +152,8 @@ def run_bot():
           for u in queues[ctx.guild.id][0]:
              await ctx.send(u)
 
-     async def search_by_title(ctx,title):
-        results = YoutubeSearch(title,max_results = 10).to_dict()
-        embed = new EmbedBuilder()
-        for result in results:
-
-            (title = result['title'], url = "https://www.youtube.com" + result['url_suffix'])
-        ctx.send
-
     client.run(TOKEN)
+
 #global vars
 current_song = None
 repeat_songs = 0
