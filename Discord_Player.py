@@ -12,7 +12,7 @@ from collections import defaultdict
 from discord import ui
 from youtube_search import YoutubeSearch
 #from discord_ui import Components
-
+import validators
  
 def run_bot():
    
@@ -55,10 +55,12 @@ def run_bot():
             print(e)
         
         try:
+    
             if link.find("http") == -1:
                 result = YoutubeSearch(ctx.message.content,max_results = 20).to_dict()
                 link = "https://www.youtube.com" + result[0]['url_suffix']
             
+
             loop = asyncio.get_event_loop()
             data = await loop.run_in_executor(None,lambda: ytdl.extract_info(link, download=False))
             song = data['url']
