@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 import os
 import typing
 import discord 
-import yt_dlp
+import yt_dlp 
 import nacl
 import asyncio
 import json
@@ -12,13 +12,124 @@ from collections import defaultdict
 from discord import ui
 from youtube_search import YoutubeSearch
 #from discord_ui import Components
-import validators
  
-def run_bot():
+
+
+class SearchButton(discord.ui.Button):
+    def __init__(self, label, style,button_id,rownum):
+        super().__init__(label = label, style = style,custom_id = button_id, row = rownum)
+
+    #async def callback(self,interaction,ctx=None):
+    #             message = self.custom_id
+    #             await interaction.response.send_message(message)
+
    
-    TOKEN = "" 
-    #load_dotenv()
-    #TOKEN = os.getenv('discord_token')
+class SearchView(discord.ui.View):
+    def __init__(self):
+        super().__init__()  
+
+    def createButton(self,label,button_id,rownum):
+        button = SearchButton(label = label, button_id = button_id, style = discord.ButtonStyle.primary, rownum = rownum)
+        self.add_item(button)
+
+class Queue:
+
+    __queue = []
+
+    def enqueue(self,item):
+        self.__queue.append(item)
+
+    def dequeue(self):
+        return self.__queue.pop(0)
+    
+    def insertTo(self,index,item):
+        self.__queue.insert(index,item)
+
+    def clear(self):
+        self.__queue.clear()
+
+    def getQueue(self):
+        return self.__queue
+    
+    def count(self):
+        return len(self.__queue)
+
+    def removeFromIndex(self,index):
+        self.__queue.pop(index)
+   
+
+class YoutubeDownloader(yt_dlp.YoutubeDL):
+   
+   __ytdl_options = None
+   
+   def __init__(self,options):
+       self.__ytdl_options = options
+       super().__init__(options)
+
+   def getOptionValue(self,key):
+       return self.__ytdl_options[key]
+   
+   def setOptionValue(self,key,value):
+       self.__ytdl_options[key] = value
+
+
+
+class DiscordPlayer(discord.FFmpegOpusAudio):
+    
+    def __init__(self,audioSource,options):
+        super().__init__(source = audioSource, options = options)
+
+   
+class VoiceClient(discord.VoiceClient):
+    
+    #sources for playing
+    queue = Queue()
+    
+    def connect(self,VoiceChannel):
+        self = VoiceChannel.connect()
+        return self
+    
+    def addForPlay(self,source):
+        self.queue.enqueue(source)
+
+    #def delFromQueue(self,number):
+    #    self.queue.
+
+class MusicBot(commands.Bot):
+        
+    queue = Queue()
+    __VoiceClients = {}
+   # __srchView = SearchView()
+
+    def __init__(self,options,intents = discord.Intents.default(),commandPrefix ='!'):
+        intents.message_content = True
+        super().__init__(intents = intents, command_prefix = commandPrefix)
+        
+   
+    def __addVoiceClient(self,guild_id,voice_client):
+        if guild_id not in self.__VoiceClients:
+            self.__VoiceClients[guild_id] = voice_client
+        
+    def getVoiceClientByGuildId(self,guild_id):
+        return self.__VoiceClients[guild_id]
+
+    def playInChannel(self,player,guild_id):
+        self.__VoiceClients[guild_id].play(player, after = lambda e: asyncio.run_coroutine_threadsafe(play_next(ctx), self.loop))
+    
+    def run(self,token):
+        self.run(token)
+    
+    def getSourceByTitle(self,ctx):
+        result = YoutubeSearch(ctx.message.content,max_results = 1).to_dict()
+        link = "https://www.youtube.com" + result[0]['url_suffix']
+        return link
+        
+
+
+def run_bot():
+
+    load_dotenv()
+    TOKEN = os.getenv('discord_music_bot_token')
     intents = discord.Intents.default()
     intents.message_content = True
     client = commands.Bot(command_prefix="!", intents=intents)
@@ -28,6 +139,14 @@ def run_bot():
     ytdl = yt_dlp.YoutubeDL(yt_dl_options)
     ffmpeg_options = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5','options': '-vn -filter:a "volume=0.25"'}
 
+
+    @client.event
+    async def on_interaction(interaction):
+        if interaction.type[1] == 3:
+            ctx = await client.get_context(interaction.message)
+            ctx.author = interaction.user
+            await play(ctx,interaction.data['custom_id'])
+        
     #check that bot is running
     @client.event
     async def on_ready():
@@ -48,19 +167,17 @@ def run_bot():
     @client.command(name="play")
     async def play(ctx, link):
         try:
-            if ctx.author.voice is None: return await ctx.send("Get in a voice channel first...")
+            #if ctx.author.voice is None: return await ctx.send("Get in a voice channel first...")
             voice_client = await ctx.author.voice.channel.connect()
             voice_clients[ctx.guild.id] = voice_client
         except Exception as e:
             print(e)
         
         try:
-    
             if link.find("http") == -1:
-                result = YoutubeSearch(ctx.message.content,max_results = 20).to_dict()
+                result = YoutubeSearch(ctx.message.content,max_results = 1).to_dict()
                 link = "https://www.youtube.com" + result[0]['url_suffix']
             
-
             loop = asyncio.get_event_loop()
             data = await loop.run_in_executor(None,lambda: ytdl.extract_info(link, download=False))
             song = data['url']
@@ -76,15 +193,13 @@ def run_bot():
         except Exception as e:
             print(e)
     
+
     #clear queue
     @client.command(name="clear_queue")
     async def clear_queue(ctx):
         if ctx.guild.id in queues:
             queues[ctx.guild.id][0].clear()
-            await ctx.send("Queue cleared!")
-        else:
-            await ctx.send("There is no queue to clear!")
-    
+   
     #repeat queue
     @client.command(name = "repeat")
     async def repeat(ctx):
@@ -129,7 +244,7 @@ def run_bot():
         try:
             global repeat_songs
             repeat_songs = 0
-            await clear_queue(ctx)
+            #await clear_queue(ctx)
             voice_clients[ctx.guild.id].stop()
             client.loop.close()
             
@@ -139,12 +254,12 @@ def run_bot():
             print(e)
 
     #add to queue
-    async def queue(ctx, url):
+    async def queue(guild_id, url):
         #if key does not exists
-        if ctx.guild.id not in queues:
-            queues[ctx.guild.id].append([])
-        queues[ctx.guild.id][0].append(url)
-    
+        if guild.id not in queues:
+            queues[guild.id].append([])
+        queues[guild.id][0].append(url)
+  
     #getting queue list 
     @client.command(name="get")
     async def get(ctx):
@@ -152,12 +267,27 @@ def run_bot():
           for u in queues[ctx.guild.id][0]:
              await ctx.send(u)
 
+    @client.command("search")
+    async def search(ctx):
+        row = 0
+        searchview = SearchView()
+
+        lstofbuttons = []
+        results = YoutubeSearch(ctx.message.content,max_results = 5).to_dict()
+
+        for result in results:
+           label = result['title']
+           identifier = "https://www.youtube.com" + result['url_suffix']
+           searchview.createButton(label,identifier,row)
+           row +=1
+        await ctx.reply("Choose the title:",view = searchview)
+    
+       
+
     client.run(TOKEN)
 
-#global vars
+global vars
 current_song = None
 repeat_songs = 0
 from_queue = 0
 run_bot()
-
-
