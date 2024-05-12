@@ -254,11 +254,11 @@ def run_bot():
             print(e)
 
     #add to queue
-    async def queue(guild_id, url):
+    async def queue(ctx, url):
         #if key does not exists
-        if guild.id not in queues:
-            queues[guild.id].append([])
-        queues[guild.id][0].append(url)
+        if ctx.guild.id not in queues:
+            queues[ctx.guild.id].append([])
+        queues[ctx.guild.id][0].append(url)
   
     #getting queue list 
     @client.command(name="get")
